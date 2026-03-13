@@ -59,9 +59,18 @@ python main.py
 ```
 
 ### Using Docker
-```bash
-docker-compose up --build
-```
+There are two ways to run the service with Docker:
+
+1. **Interactive Mode**:
+   ```bash
+   docker-compose up --build
+   ```
+   *Note: To interact with the prompt, you may need to use `docker attach` or run with `-it` in some terminals.*
+
+2. **Automated Test Suite**:
+   ```bash
+   docker-compose run prompt-router python main.py --test
+   ```
 
 ## Supported Experts
 1. **Code Expert**: Technical, code-focused, best practices.
