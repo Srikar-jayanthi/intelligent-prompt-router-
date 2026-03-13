@@ -29,7 +29,7 @@ def classify_intent(message: str) -> dict:
     try:
         # Prompt routing with fast model
         model = genai.GenerativeModel(
-            'gemini-2.5-flash',
+            'gemini-1.5-flash',
             generation_config={"response_mime_type": "application/json", "temperature": 0.0}
         )
         
@@ -79,7 +79,7 @@ def route_and_respond(message: str, intent_data: dict) -> str:
     system_prompt = PROMPTS[intent]
     
     model = genai.GenerativeModel(
-        'gemini-2.5-flash',
+        'gemini-1.5-flash',
         system_instruction=system_prompt,
         generation_config={"temperature": 0.7}
     )
