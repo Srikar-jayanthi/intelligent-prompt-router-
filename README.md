@@ -1,5 +1,8 @@
 # LLM-Powered Prompt Router for Intent Classification
 
+> [!TIP]
+> **Quick Start**: To run the full test suite immediately, ensure your `GEMINI_API_KEY` is in the `.env` file and run: `python main.py --test`
+
 ## Project Overview
 This service implements an intelligent prompt router that classifies user intent and delegates requests to specialized AI personas. By using a two-step process ("Classify, then Respond"), the system delivers high-quality, context-aware responses while optimizing for speed and cost.
 
