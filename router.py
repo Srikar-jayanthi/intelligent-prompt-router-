@@ -13,6 +13,7 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 LOG_FILE = "route_log.jsonl"
 CONFIDENCE_THRESHOLD = 0.7
+DEFAULT_MODEL = "gemini-2.5-flash"
 
 def classify_intent(message: str) -> dict:
     """
@@ -20,37 +21,37 @@ def classify_intent(message: str) -> dict:
     Returns a dictionary with 'intent' and 'confidence'.
     """
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel(DEFAULT_MODEL)
         full_prompt = f"{CLASSIFIER_PROMPT}\n\nUser Message: {message}\n\nReturn ONLY a JSON object."
         
-        response = model.generate_content(
-            full_prompt,
-            generation_config=genai.types.GenerationConfig(
-                response_mime_type="application/json",
-            )
-        )
-        
-        content = response.text.strip()
-        data = json.loads(content)
-        
-        # Validate structure
-        if "intent" not in data or "confidence" not in data:
-            raise ValueError("Invalid JSON structure from LLM")
-            
-        return data
-    except Exception as e:
-        # Fallback for models/keys that don't support JSON mode or have issues
+        # Try with JSON mode if supported
         try:
-            model_fallback = genai.GenerativeModel('gemini-1.5-flash')
-            response = model_fallback.generate_content(f"{CLASSIFIER_PROMPT}\n\nUser Message: {message}\n\nReturn EXACTLY a JSON object.")
+            response = model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    response_mime_type="application/json",
+                )
+            )
             content = response.text.strip()
+            data = json.loads(content)
+            return data
+        except Exception as json_err:
+            # Fallback to standard generation and manual cleaning
+            response = model.generate_content(full_prompt)
+            content = response.text.strip()
+            
+            # Extract JSON from markdown if present
             if "```json" in content:
                 content = content.split("```json")[1].split("```")[0].strip()
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0].strip()
-            return json.loads(content)
-        except:
-            return {"intent": "unclear", "confidence": 0.0}
+            
+            data = json.loads(content)
+            return data
+
+    except Exception as e:
+        # Final fallback for any error
+        return {"intent": "unclear", "confidence": 0.0}
 
 def route_and_respond(message: str, intent_data: dict) -> str:
     """
@@ -69,21 +70,22 @@ def route_and_respond(message: str, intent_data: dict) -> str:
         return CLARIFICATION_PROMPT
         
     try:
-        model = genai.GenerativeModel(
-            model_name='gemini-1.5-flash',
-            system_instruction=system_prompt
-        )
-        response = model.generate_content(message)
-        return response.text
-    except Exception as e:
-        # Fallback if system_instruction is not supported
+        # Use system_instruction if possible, otherwise prepend
         try:
-            model_fallback = genai.GenerativeModel('gemini-1.5-flash')
-            full_msg = f"{system_prompt}\n\nUser Message: {message}"
-            response = model_fallback.generate_content(full_msg)
+            model = genai.GenerativeModel(
+                model_name=DEFAULT_MODEL,
+                system_instruction=system_prompt
+            )
+            response = model.generate_content(message)
             return response.text
         except:
-            return "I'm sorry, I encountered an error while processing your request."
+            model = genai.GenerativeModel(DEFAULT_MODEL)
+            full_msg = f"{system_prompt}\n\nUser Message: {message}"
+            response = model.generate_content(full_msg)
+            return response.text
+            
+    except Exception as e:
+        return "I'm sorry, I encountered an error while processing your request."
 
 def log_request(intent: str, confidence: float, user_message: str, final_response: str):
     """
@@ -103,7 +105,7 @@ def process_message(message: str) -> str:
     """
     Orchestrates the classification, routing, and logging.
     """
-    # Optional Manual Override stretch goal
+    # Manual Override
     if message.startswith("@"):
         parts = message.split(" ", 1)
         prefix = parts[0][1:].lower()
