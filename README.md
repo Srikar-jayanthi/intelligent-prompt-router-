@@ -23,7 +23,7 @@ This service implements an intelligent prompt router that classifies user intent
 ### Prerequisites
 - Python 3.9+
 - Docker (optional, for containerization)
-- OpenAI API Key
+- Google Gemini API Key
 
 ### Local Installation
 1. Clone the repository.
@@ -40,7 +40,7 @@ This service implements an intelligent prompt router that classifies user intent
    ```bash
    cp .env.example .env
    ```
-5. Add your `OPENAI_API_KEY` to the `.env` file.
+5. Add your `GEMINI_API_KEY` to the `.env` file.
 
 ## Usage
 

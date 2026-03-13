@@ -1,34 +1,36 @@
 import os
 import json
 import logging
-from openai import OpenAI
+import google.generativeai as genai
 from dotenv import load_dotenv
 from prompts import SYSTEM_PROMPTS, CLASSIFIER_PROMPT, CLARIFICATION_PROMPT
 
 # Load environment variables
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Configure Gemini
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 LOG_FILE = "route_log.jsonl"
 CONFIDENCE_THRESHOLD = 0.7
 
 def classify_intent(message: str) -> dict:
     """
-    Classifies the user's intent using an LLM call.
+    Classifies the user's intent using Gemini.
     Returns a dictionary with 'intent' and 'confidence'.
     """
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # Using a lightweight model for classification
-            messages=[
-                {"role": "system", "content": CLASSIFIER_PROMPT},
-                {"role": "user", "content": message}
-            ],
-            response_format={"type": "json_object"}
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        full_prompt = f"{CLASSIFIER_PROMPT}\n\nUser Message: {message}\n\nReturn ONLY a JSON object."
+        
+        response = model.generate_content(
+            full_prompt,
+            generation_config=genai.types.GenerationConfig(
+                response_mime_type="application/json",
+            )
         )
         
-        content = response.choices[0].message.content
+        content = response.text.strip()
         data = json.loads(content)
         
         # Validate structure
@@ -37,8 +39,18 @@ def classify_intent(message: str) -> dict:
             
         return data
     except Exception as e:
-        print(f"Error in classification: {e}")
-        return {"intent": "unclear", "confidence": 0.0}
+        # Fallback for models/keys that don't support JSON mode or have issues
+        try:
+            model_fallback = genai.GenerativeModel('gemini-1.5-flash')
+            response = model_fallback.generate_content(f"{CLASSIFIER_PROMPT}\n\nUser Message: {message}\n\nReturn EXACTLY a JSON object.")
+            content = response.text.strip()
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            return json.loads(content)
+        except:
+            return {"intent": "unclear", "confidence": 0.0}
 
 def route_and_respond(message: str, intent_data: dict) -> str:
     """
@@ -57,17 +69,21 @@ def route_and_respond(message: str, intent_data: dict) -> str:
         return CLARIFICATION_PROMPT
         
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",  # Using a more capable model for the expert response
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message}
-            ]
+        model = genai.GenerativeModel(
+            model_name='gemini-1.5-flash',
+            system_instruction=system_prompt
         )
-        return response.choices[0].message.content
+        response = model.generate_content(message)
+        return response.text
     except Exception as e:
-        print(f"Error in expert generation: {e}")
-        return "I'm sorry, I encountered an error while processing your request."
+        # Fallback if system_instruction is not supported
+        try:
+            model_fallback = genai.GenerativeModel('gemini-1.5-flash')
+            full_msg = f"{system_prompt}\n\nUser Message: {message}"
+            response = model_fallback.generate_content(full_msg)
+            return response.text
+        except:
+            return "I'm sorry, I encountered an error while processing your request."
 
 def log_request(intent: str, confidence: float, user_message: str, final_response: str):
     """

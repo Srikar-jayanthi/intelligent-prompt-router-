@@ -13,8 +13,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Environment variable for OpenAI API Key (should be provided via docker-compose or .env)
-ENV OPENAI_API_KEY=""
+# Environment variable for Gemini API Key (should be provided via docker-compose or .env)
+ENV GEMINI_API_KEY=""
 
 # Run main.py when the container launches
 CMD ["python", "main.py"]
