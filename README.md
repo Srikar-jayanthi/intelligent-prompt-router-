@@ -1,54 +1,76 @@
-# LLM-Powered Prompt Router
+# LLM-Powered Prompt Router for Intent Classification
 
-An intelligent routing service that uses a "Classify, then Respond" pattern to direct user queries to specialized AI personas. This project prevents monolithic prompt inefficiency by using a lightweight classifier to delegate tasks to 'expert' personas.
+## Project Overview
+This service implements an intelligent prompt router that classifies user intent and delegates requests to specialized AI personas. By using a two-step process ("Classify, then Respond"), the system delivers high-quality, context-aware responses while optimizing for speed and cost.
 
-## Features
-- **Intelligent Classification**: Detects user intent (code, data, writing, career, math) using Gemini 2.5 Flash.
-- **Expert Personas**: Specialized system prompts for high-quality, task-specific responses.
-- **Manual Overrides**: Force routing using `@persona` tags (e.g., `@code fix this bug`).
-- **Robust Logging**: JSON Lines logging with timestamps, intents, confidence, and full responses.
-- **Graceful Error Handling**: Fallbacks for malformed LLM responses or API issues.
+### Key Features
+- **Intent Classification**: Uses a lightweight model to detect intent (Code, Data, Writing, Career, or Unclear).
+- **Expert Personas**: Sharp, opinionated personas for each domain.
+- **Graceful Error Handling**: Handles malformed LLM responses and defaults to clarification.
+- **Robust Logging**: All routing decisions and responses are saved to `route_log.jsonl`.
+- **Confidence Thresholding**: If the classifier is unsure (< 0.7 confidence), it asks for clarification.
+- **Manual Override**: prefix messages with `@code`, `@data`, etc., to bypass the classifier.
+
+## Project Structure
+- `router.py`: Main logic for classification and routing.
+- `prompts.py`: Storage for all system and classifier prompts.
+- `main.py`: Entry point for testing and interactive CLI.
+- `route_log.jsonl`: Logs for every request.
+- `Dockerfile` & `docker-compose.yml`: Containerization support.
 
 ## Setup Instructions
 
-### 1. Prerequisite: Python 3.8+
-Ensure you have Python installed.
+### Prerequisites
+- Python 3.9+
+- Docker (optional, for containerization)
+- OpenAI API Key
 
-### 2. Set up Environment Variables
-1. Copy `.env.example` to a new file named `.env`.
-2. Open `.env` and add your Gemini API key:
-   ```env
-   GEMINI_API_KEY=your_api_key_here
+### Local Installation
+1. Clone the repository.
+2. Create a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. Create a `.env` file based on `.env.example`:
+   ```bash
+   cp .env.example .env
+   ```
+5. Add your `OPENAI_API_KEY` to the `.env` file.
 
-### 3. Install Dependencies
-It is recommended to use a virtual environment:
+## Usage
+
+### Running the Test Suite
+To run the 15 predefined test cases and generate the initial log:
 ```bash
-python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On macOS/Linux:
-source .venv/bin/activate
-
-pip install -r requirements.txt
+python main.py --test
 ```
 
-## How to Run
-
-### Run the Interactive CLI
-Launch the interactive session to chat with the personas:
+### Running Interactive Mode
 ```bash
-python router.py
+python main.py
 ```
 
-### Run Unit Tests
-Verify the system's logic and error handling:
+### Using Docker
 ```bash
-pytest test_router.py
+docker-compose up --build
 ```
 
-## Design Overview
-* **Classification**: Uses `gemini-2.5-flash` with JSON mode for fast, cost-effective intent detection.
-* **Routing**: Maps intent labels to system prompts defined in `prompts.json`.
-* **Generation**: Generates the final response using the selected expert persona.
-* **Observability**: All interactions are logged to `route_log.jsonl` for evaluation.
+## Supported Experts
+1. **Code Expert**: Technical, code-focused, best practices.
+2. **Data Analyst**: Statistical, visualization suggestions, data-driven.
+3. **Writing Coach**: Feedback-oriented, structured, constructive.
+4. **Career Advisor**: Pragmatic, actionable, goal-oriented.
+
+## Evaluation Criteria fulfilled
+- [x] Four distinct expert prompts.
+- [x] `classify_intent` with structured JSON output.
+- [x] `route_and_respond` mapping intent to personas.
+- [x] Unclear intent handling with clarification questions.
+- [x] Logging to `route_log.jsonl`.
+- [x] Graceful error handling for LLM output.
+- [x] Dockerization.
